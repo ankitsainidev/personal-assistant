@@ -1,0 +1,12 @@
+name: pat
+version: "0.1"
+about: personal assistant
+
+subcommands:
+    - note:
+        about: takes note
+        args:
+            - note:
+                index: 1
+                help: note message to print
+                required: true
