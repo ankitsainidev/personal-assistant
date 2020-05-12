@@ -1,0 +1,5 @@
+I'm your assistant. Call me `pat`
+
+For now I can only take notes
+Usage:
+    `pat note "A quote can make your day"`

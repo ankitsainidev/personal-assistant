@@ -10,3 +10,5 @@ subcommands:
                 index: 1
                 help: note message to print
                 required: true
+    - weather:
+        about: get information about weather
