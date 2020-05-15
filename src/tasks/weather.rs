@@ -56,7 +56,6 @@ pub struct WeatherResponse {
     name: String,
     cod: i32,
 }
-
 // TODO: show more info in more readable form
 impl fmt::Display for WeatherResponse {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -64,11 +63,21 @@ impl fmt::Display for WeatherResponse {
             f,
             "{city}   {main}
 {description}
-Temperature: {temp}",
+Temperature:
+    {temp:.2} °C
+    feels like: {temp_feel:.2} °C
+Wind:
+    Speed: {wind:.2} m/s
+    Direction: {wind_deg}° ",
             city = self.name,
             main = self.weather[0].main,
             description = self.weather[0].description,
-            temp = self.main.temp
+            wind = self.wind.speed,
+            wind_deg = self.wind.deg,
+
+            //Kelvin to celcius
+            temp = self.main.temp - 273.15,
+            temp_feel = self.main.feels_like - 273.15,
         )
     }
 }

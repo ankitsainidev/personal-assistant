@@ -22,16 +22,17 @@ async fn main() {
     // checks for database and weather_config file
     startup(&home_dir[..]);
 
-    let weather_config: Config = serde_json::from_str(include_str!("static/config.json")).unwrap();
 
     let mut db = database::db().await.expect("can't load database. ");
-    let mut handler = Handler::new(&mut db, weather_config);
+    let mut handler = Handler::new(&mut db, home_dir.clone());
     match matches.subcommand() {
         ("note", Some(matches)) => handler.note(matches).await,
         ("weather", Some(_matches)) => handler.weather().await,
         ("save", Some(matches)) => handler.save(matches).await,
         ("todo", Some(matches)) => handler.todo(matches).await,
         ("quote", Some(_matches)) => handler.quote().await,
+
+        // timer need home_dir to locate notification.ogg file
         ("timer", Some(matches)) => handler.timer(matches, &home_dir[..]),
         _ => introduction(),
     }
@@ -46,10 +47,15 @@ fn introduction() {
     println!("{}", introduction);
 }
 
+
+/* creates application directory $HOME/.pat if it's not already there
+creates and set content of config.json and notification.ogg in the directory*/
 fn startup(dir: &str) {
+
     let home_path = Path::new(dir);
     let pat_path = home_path.join(".pat");
 
+    // Directory setup
     match fs::create_dir(pat_path.clone()) {
         Ok(_val) => {
             println!("Welcome. For help run `pat`");
@@ -61,6 +67,7 @@ fn startup(dir: &str) {
         }
     };
 
+    // notification sound setup
     /* include_bytes adds to the size of binary
         but helps in reducing the script to standalone binary */
     let data = include_bytes!("static/notification.ogg");
@@ -78,6 +85,21 @@ fn startup(dir: &str) {
             }
         }
     };
+
+    // weather config file setup
+    let config_default_content = include_bytes!("static/config.json");
+    match fs::File::create(pat_path.join("config.json")) {
+        Ok(mut buff) =>{
+            buff.write_all(config_default_content)
+            .expect("Can't write to weather config file");
+        }
+        Err(e) => {
+            if e.kind() != ErrorKind::AlreadyExists{
+                println!("Can't create weather config file.");
+            }
+        }
+    }
+
 }
 
 // Struct definitions for deserializing weather config including Api and location
@@ -108,15 +130,15 @@ Implements Handler which is responsible to handle all of the arguments passed
 // handles all the argument matches
 struct Handler<'a> {
     db: &'a mut sqlx::SqliteConnection,
-    weather_config: Config,
+    home_dir: String,
 }
 
 /* map argument matches to their corresponding tasks */
 impl Handler<'_> {
-    pub fn new(db: &mut sqlx::SqliteConnection, config: Config) -> Handler {
+    pub fn new(db: &mut sqlx::SqliteConnection, home_dir: String) -> Handler {
         Handler {
             db: db,
-            weather_config: config,
+            home_dir: home_dir,
         }
     }
 
@@ -175,6 +197,13 @@ impl Handler<'_> {
     }
 
     pub async fn weather(&self) {
+        let weather_config_string: String = fs::read_to_string(Path::new(&self.home_dir)
+                                        .join("config.json"))
+                                        .expect("Can't open weather config file")
+                                        .parse()
+                                        .expect("Can't read content of config file");
+        let weather_config: Config = serde_json::from_str(&weather_config_string).unwrap();
+
         // deconstructing the weather config
         let Config {
             api_keys: Apis {
@@ -188,7 +217,7 @@ impl Handler<'_> {
                             country_code,
                         },
                 },
-        } = &self.weather_config;
+        } = &weather_config;
         println!(
             "{}",
             tasks::weather::now(
