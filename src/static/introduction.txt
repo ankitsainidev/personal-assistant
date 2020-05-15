@@ -13,6 +13,8 @@ Usage:
     weather:
         `pat weather`  for current weather
 
+        NOTE: you'll need to update the locality information in $HOME/.pat/config.json
+
     quote:
         `pat quote`  to see an inspirational quote
 
