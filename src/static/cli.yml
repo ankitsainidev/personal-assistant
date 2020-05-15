@@ -1,6 +1,6 @@
 name: pat
 version: "0.1"
-about: personal assistant
+about: personal assistant (pat)
 
 subcommands:
     - note:
@@ -10,5 +10,44 @@ subcommands:
                 index: 1
                 help: note message to print
                 required: true
+            - id:
+                index: 2
+                help: id of note to delete
+                required: false
+
     - weather:
         about: get information about weather
+
+    - quote:
+        about: get random inspirational quotes
+
+    - save:
+        about: saves a key-value pair
+        args:
+            - key:
+                  index: 1
+                  help: the identifier of value. NOTE - Must be unique and can't be 'delete' and 'copy'
+                  required: true
+            - value:
+                  index: 2
+                  help: the value to remember
+                  required: false
+
+    - todo:
+        about: create todo list. Only difference with Note is that todos can be marked as completed.
+        args:
+            - desc:
+                index: 1
+                help: description of todo
+                required: true
+            - id:
+                index: 2
+                help: id of todo to mark completed
+                required: false
+    - timer:
+        about: Starts a timer and notifies on time completion
+        args:
+            - duration:
+                index: 1
+                help: duration in seconds. default is 10
+                required: false

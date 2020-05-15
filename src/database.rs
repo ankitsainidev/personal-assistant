@@ -1,28 +1,26 @@
-use sqlx::{SqliteConnection, Connect, query, Connection};
+use sqlx::{query, Connect, Connection, SqliteConnection};
 use std::path::Path;
-// use tokio;
 
-const DB_PATH: &str = "/home/akanksha/code/rust/pat/data/data.db";
+const DB_PATH: &str = "/home/ankit/.pat/data.db";
 
 pub fn db_exists() -> bool {
     Path::new(DB_PATH).exists()
 }
 
 async fn create_db() -> Result<(), sqlx::Error> {
-    let mut conn = SqliteConnection::connect(&format!("sqlite://{}", DB_PATH)).await?;
+    // creates a new database and all the tables required by crate
 
-    query("CREATE TABLE notes (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        message VARCHAR(128) NOT NULL ,
-        time INTEGER NOT NULL)")
-        .execute(&mut conn).await?;
+    let mut conn = SqliteConnection::connect(&format!("sqlite://{}", DB_PATH)).await?;
+    query(include_str!("static/schema.sql"))
+        .execute(&mut conn)
+        .await?;
 
     conn.close().await?;
 
     Ok(())
 }
 
-pub async fn db()-> Result<SqliteConnection, sqlx::Error> {
+pub async fn db() -> Result<SqliteConnection, sqlx::Error> {
     if !db_exists() {
         create_db().await.expect("Problem connecting to db");
     }

@@ -1,0 +1,9 @@
+{
+    "api_keys": {
+        "open_weather_map": "3bd8ddb5eaf06b9d6100bff6678525c0"
+    },
+    "locations": {
+        "home": {"postal_code": "332404",
+        "country_code": "in"}
+    }
+}
