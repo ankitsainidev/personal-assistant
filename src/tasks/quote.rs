@@ -28,3 +28,8 @@ pub async fn quote() -> Result<Quote, reqwest::Error> {
     let data = reqwest::get(API_URL).await?.text().await?;
     Ok(serde_json::from_str(&data).unwrap())
 }
+
+#[tokio::test]
+async fn api_connection() {
+    quote().await.expect("Error connecting to api");
+}

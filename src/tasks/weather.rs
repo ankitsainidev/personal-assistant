@@ -74,7 +74,6 @@ Wind:
             description = self.weather[0].description,
             wind = self.wind.speed,
             wind_deg = self.wind.deg,
-
             //Kelvin to celcius
             temp = self.main.temp - 273.15,
             temp_feel = self.main.feels_like - 273.15,

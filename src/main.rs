@@ -22,7 +22,6 @@ async fn main() {
     // checks for database and weather_config file
     startup(&home_dir[..]);
 
-
     let mut db = database::db().await.expect("can't load database. ");
     let mut handler = Handler::new(&mut db, home_dir.clone());
     match matches.subcommand() {
@@ -47,11 +46,9 @@ fn introduction() {
     println!("{}", introduction);
 }
 
-
 /* creates application directory $HOME/.pat if it's not already there
 creates and set content of config.json and notification.ogg in the directory*/
 fn startup(dir: &str) {
-
     let home_path = Path::new(dir);
     let pat_path = home_path.join(".pat");
 
@@ -69,7 +66,7 @@ fn startup(dir: &str) {
 
     // notification sound setup
     /* include_bytes adds to the size of binary
-        but helps in reducing the script to standalone binary */
+    but helps in reducing the script to standalone binary */
     let data = include_bytes!("static/notification.ogg");
     let mut pos = 0;
     match fs::File::create(pat_path.join("notification.ogg")) {
@@ -89,17 +86,16 @@ fn startup(dir: &str) {
     // weather config file setup
     let config_default_content = include_bytes!("static/config.json");
     match fs::File::create(pat_path.join("config.json")) {
-        Ok(mut buff) =>{
+        Ok(mut buff) => {
             buff.write_all(config_default_content)
-            .expect("Can't write to weather config file");
+                .expect("Can't write to weather config file");
         }
         Err(e) => {
-            if e.kind() != ErrorKind::AlreadyExists{
+            if e.kind() != ErrorKind::AlreadyExists {
                 println!("Can't create weather config file.");
             }
         }
     }
-
 }
 
 // Struct definitions for deserializing weather config including Api and location
@@ -197,11 +193,11 @@ impl Handler<'_> {
     }
 
     pub async fn weather(&self) {
-        let weather_config_string: String = fs::read_to_string(Path::new(&self.home_dir)
-                                        .join("config.json"))
-                                        .expect("Can't open weather config file")
-                                        .parse()
-                                        .expect("Can't read content of config file");
+        let weather_config_string: String =
+            fs::read_to_string(Path::new(&self.home_dir).join("config.json"))
+                .expect("Can't open weather config file")
+                .parse()
+                .expect("Can't read content of config file");
         let weather_config: Config = serde_json::from_str(&weather_config_string).unwrap();
 
         // deconstructing the weather config
