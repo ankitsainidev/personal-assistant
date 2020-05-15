@@ -45,7 +45,13 @@ Usage:
         `pat todo all`  to get list of all the todos  
 
         NOTE: To get id of todo use `pat todo all`  
-
+        
+        
+    timer:
+        `pat timer 3` to set a timer of 3 sec
+        `pat timer` to set a timer for 10 (default) sec
+        
+        
     help:  
         `pat` to reach this introduction  
 ```
