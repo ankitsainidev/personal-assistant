@@ -20,6 +20,8 @@ Usage:
 
     weather:   
         `pat weather`  for current weather  
+        
+        NOTE: you'll need to update the locality information in $HOME/.pat/config.json  
 
     quote:  
         `pat quote`  to see an inspirational quote  
@@ -45,7 +47,13 @@ Usage:
         `pat todo all`  to get list of all the todos  
 
         NOTE: To get id of todo use `pat todo all`  
-
+        
+        
+    timer:
+        `pat timer 3` to set a timer of 3 sec
+        `pat timer` to set a timer for 10 (default) sec
+        
+        
     help:  
         `pat` to reach this introduction  
 ```
