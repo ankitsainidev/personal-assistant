@@ -41,7 +41,7 @@ pub async fn db(home_dir: &str) -> Result<SqliteConnection, sqlx::Error> {
 mod tests {
     use super::*;
     use std::env;
-    use std::fs;
+
     fn testing_dir() -> String{
         let testing_database = env::current_dir()
         .expect("Can't get current directory")
@@ -49,10 +49,7 @@ mod tests {
         let database_path = testing_database.to_str().unwrap();
         database_path.to_string()
     }
-    fn setup() {
-        let directory = testing_dir();
-        fs::remove_dir()
-    }
+
     #[tokio::test]
     async fn table_exists() {
         let mut database = db(&testing_dir()).await.expect("hm");
