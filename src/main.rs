@@ -11,6 +11,7 @@ use tokio;
 mod database;
 mod tasks;
 
+
 #[tokio::main]
 async fn main() {
     // setting up the cli interface
@@ -22,7 +23,7 @@ async fn main() {
     // checks for database and weather_config file
     startup(&home_dir[..]);
 
-    let mut db = database::db().await.expect("can't load database. ");
+    let mut db = database::db(&home_dir).await.expect("can't load database. ");
     let mut handler = Handler::new(&mut db, home_dir.clone());
     match matches.subcommand() {
         ("note", Some(matches)) => handler.note(matches).await,

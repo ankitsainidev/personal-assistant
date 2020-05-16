@@ -1,21 +1,18 @@
 use sqlx::{query, Connect, Connection, SqliteConnection};
-use std::env;
 use std::path::Path;
 
-pub fn get_database_path() -> String {
-    let home_dir: String = env::var("HOME").expect("Can't reach home directory.");
-
-    let home_path = Path::new(&home_dir);
+pub fn get_database_path(home_dir: &str) -> String {
+    let home_path = Path::new(home_dir);
     let pat_path = home_path.join(".pat").join("data.db");
     pat_path.to_str().unwrap().to_string()
 }
 
-pub fn db_exists() -> bool {
-    Path::new(&get_database_path()).exists()
+pub fn db_exists(home_dir: &str) -> bool {
+    Path::new(&get_database_path(home_dir)).exists()
 }
 
-async fn create_db() -> Result<(), sqlx::Error> {
-    let path = get_database_path();
+async fn create_db(home_dir: &str) -> Result<(), sqlx::Error> {
+    let path = get_database_path(home_dir);
 
     // creates a new database and all the tables required by crate
 
@@ -29,12 +26,39 @@ async fn create_db() -> Result<(), sqlx::Error> {
     Ok(())
 }
 
-pub async fn db() -> Result<SqliteConnection, sqlx::Error> {
-    let path = get_database_path();
-    if !db_exists() {
-        create_db().await.expect("Problem connecting to db");
+pub async fn db(home_dir: &str) -> Result<SqliteConnection, sqlx::Error> {
+    let path = get_database_path(home_dir);
+    if !db_exists(home_dir) {
+        create_db(home_dir).await.expect("Problem connecting to db");
     }
     let db_url = &format!("sqlite://{}", path);
     let conn = SqliteConnection::connect(db_url).await?;
     Ok(conn)
+}
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::env;
+    use std::fs;
+    fn testing_dir() -> String{
+        let testing_database = env::current_dir()
+        .expect("Can't get current directory")
+        .join("testing_files");
+        let database_path = testing_database.to_str().unwrap();
+        database_path.to_string()
+    }
+    fn setup() {
+        let directory = testing_dir();
+        fs::remove_dir()
+    }
+    #[tokio::test]
+    async fn table_exists() {
+        let mut database = db(&testing_dir()).await.expect("hm");
+        query("SELECT * from notes").execute(&mut database).await.expect("can't find");
+        query("SELECT * from todos").execute(&mut database).await.expect("can't find");
+        query("SELECT * from saves").execute(&mut database).await.expect("can't find");
+    }
+
 }
