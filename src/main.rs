@@ -1,16 +1,15 @@
 #[macro_use]
 extern crate clap;
 use clap::App;
-use serde_json;
 use sqlx::Connection;
 use std::convert::TryInto;
-use std::io::{self, ErrorKind, Write};
-use std::{env, fs, path::Path};
+use std::io::{self, Write};
+use std::{env, path::Path};
 use tokio;
+mod setup;
 
 mod database;
 mod tasks;
-
 
 #[tokio::main]
 async fn main() {
@@ -18,22 +17,23 @@ async fn main() {
     let yaml = load_yaml!("static/cli.yml");
 
     let home_dir = env::var("HOME").expect("Can't reach home directory.");
+    let pat_dir = Path::new(&home_dir).join(".pat");
     let matches = App::from_yaml(yaml).get_matches();
 
     // checks for database and weather_config file
-    startup(&home_dir[..]);
+    setup::main(&home_dir[..]);
 
-    let mut db = database::db(&home_dir).await.expect("can't load database. ");
-    let mut handler = Handler::new(&mut db, home_dir.clone());
+    let mut db = database::db(&home_dir)
+        .await
+        .expect("can't load database. ");
+    let mut handler = Handler::new(&mut db, &pat_dir);
     match matches.subcommand() {
         ("note", Some(matches)) => handler.note(matches).await,
         ("weather", Some(_matches)) => handler.weather().await,
         ("save", Some(matches)) => handler.save(matches).await,
         ("todo", Some(matches)) => handler.todo(matches).await,
         ("quote", Some(_matches)) => handler.quote().await,
-
-        // timer need home_dir to locate notification.ogg file
-        ("timer", Some(matches)) => handler.timer(matches, &home_dir[..]),
+        ("timer", Some(matches)) => handler.timer(matches),
         _ => introduction(),
     }
 
@@ -47,79 +47,6 @@ fn introduction() {
     println!("{}", introduction);
 }
 
-/* creates application directory $HOME/.pat if it's not already there
-creates and set content of config.json and notification.ogg in the directory*/
-fn startup(dir: &str) {
-    let home_path = Path::new(dir);
-    let pat_path = home_path.join(".pat");
-
-    // Directory setup
-    match fs::create_dir(pat_path.clone()) {
-        Ok(_val) => {
-            println!("Welcome. For help run `pat`");
-        }
-        Err(e) => {
-            if e.kind() != ErrorKind::AlreadyExists {
-                panic!("Problem creating directory");
-            }
-        }
-    };
-
-    // notification sound setup
-    /* include_bytes adds to the size of binary
-    but helps in reducing the script to standalone binary */
-    let data = include_bytes!("static/notification.ogg");
-    let mut pos = 0;
-    match fs::File::create(pat_path.join("notification.ogg")) {
-        Ok(mut buff) => {
-            while pos < data.len() {
-                let bytes_written = buff.write(&data[pos..]).expect("Error writing sound file");
-                pos += bytes_written;
-            }
-        }
-        Err(e) => {
-            if e.kind() != ErrorKind::AlreadyExists {
-                println!("Can't store sound file required for timer");
-            }
-        }
-    };
-
-    // weather config file setup
-    let config_default_content = include_bytes!("static/config.json");
-    match fs::File::create(pat_path.join("config.json")) {
-        Ok(mut buff) => {
-            buff.write_all(config_default_content)
-                .expect("Can't write to weather config file");
-        }
-        Err(e) => {
-            if e.kind() != ErrorKind::AlreadyExists {
-                println!("Can't create weather config file.");
-            }
-        }
-    }
-}
-
-// Struct definitions for deserializing weather config including Api and location
-
-#[derive(Debug, serde::Deserialize)]
-struct Apis {
-    open_weather_map: String,
-}
-#[derive(Debug, serde::Deserialize)]
-struct Location {
-    postal_code: String,
-    country_code: String,
-}
-#[derive(Debug, serde::Deserialize)]
-struct Locations {
-    home: Location,
-}
-#[derive(Debug, serde::Deserialize)]
-struct Config {
-    api_keys: Apis,
-    locations: Locations,
-}
-
 /*
 Implements Handler which is responsible to handle all of the arguments passed
 */
@@ -127,15 +54,18 @@ Implements Handler which is responsible to handle all of the arguments passed
 // handles all the argument matches
 struct Handler<'a> {
     db: &'a mut sqlx::SqliteConnection,
-    home_dir: String,
+    pat_dir: &'a Path,
 }
 
 /* map argument matches to their corresponding tasks */
 impl Handler<'_> {
-    pub fn new(db: &mut sqlx::SqliteConnection, home_dir: String) -> Handler {
+    pub fn new<'a>(
+        db: &'a mut sqlx::SqliteConnection,
+        pat_dir: &'a std::path::Path,
+    ) -> Handler<'a> {
         Handler {
             db: db,
-            home_dir: home_dir,
+            pat_dir: pat_dir,
         }
     }
 
@@ -194,36 +124,13 @@ impl Handler<'_> {
     }
 
     pub async fn weather(&self) {
-        let weather_config_string: String =
-            fs::read_to_string(Path::new(&self.home_dir).join("config.json"))
-                .expect("Can't open weather config file")
-                .parse()
-                .expect("Can't read content of config file");
-        let weather_config: Config = serde_json::from_str(&weather_config_string).unwrap();
-
         // deconstructing the weather config
-        let Config {
-            api_keys: Apis {
-                open_weather_map: weather_api_key,
-            },
-            locations:
-                Locations {
-                    home:
-                        Location {
-                            postal_code,
-                            country_code,
-                        },
-                },
-        } = &weather_config;
+
         println!(
             "{}",
-            tasks::weather::now(
-                weather_api_key.to_string(),
-                postal_code.to_string(),
-                country_code.to_string()
-            )
-            .await
-            .expect("can't get weather data")
+            tasks::weather::from_config(&self.pat_dir.join("config.json"))
+                .await
+                .expect("can't get weather data")
         );
     }
 
@@ -317,10 +224,10 @@ impl Handler<'_> {
         }
     }
 
-    pub fn timer(&self, matches: &clap::ArgMatches<'_>, home_dir: &str) {
+    pub fn timer(&self, matches: &clap::ArgMatches<'_>) {
         let str_duration = matches.value_of("duration").unwrap_or("10");
         let duration =
             std::time::Duration::new(str_duration.parse::<i32>().unwrap().try_into().unwrap(), 0);
-        tasks::timer::start(duration, home_dir);
+        tasks::timer::start(duration, &self.pat_dir.join("notification.ogg"));
     }
 }
